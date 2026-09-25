@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Roteiro Viral</title>
+  <meta name="description" content="Cole o link de um vídeo viral e receba um roteiro novo, com a sua cara, pronto para gravar.">
+  <meta name="theme-color" content="#F6F1EB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1B1715" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Roteiro Viral">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css?v=1.0.0">
+</head>
+<body>
+  <header class="topo" id="topo">
+    <button class="marca" data-ir="criar" aria-label="Início">
+      <span class="marca-icone" aria-hidden="true"></span>
+      <span class="marca-nome">Roteiro <em>Viral</em></span>
+    </button>
+    <nav class="topo-nav" id="topo-nav">
+      <button class="nav-btn" data-ir="historico">Meus roteiros</button>
+      <button class="nav-btn" data-ir="perfil">Perfil</button>
+    </nav>
+  </header>
+
+  <main id="app">
+    <!-- LOGIN -->
+    <section class="view" id="v-login" hidden>
+      <div class="login">
+        <span class="marca-icone grande" aria-hidden="true"></span>
+        <h1 class="titulo-display">Roteiro <em>Viral</em></h1>
+        <p class="sub">Do vídeo que viralizou para o seu próximo roteiro.</p>
+        <form id="form-login" class="cartao">
+          <label class="rotulo" for="senha">Senha</label>
+          <input id="senha" type="password" autocomplete="current-password" required>
+          <p class="erro-campo" id="erro-login" hidden></p>
+          <button class="btn primario largo" type="submit">Entrar</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- CRIAR -->
+    <section class="view" id="v-criar" hidden>
+      <div class="intro">
+        <h1 class="titulo-display">O que viralizou,<br><em>do seu jeito.</em></h1>
+        <p class="sub">A IA assiste o vídeo, entende por que ele prendeu as pessoas e escreve um roteiro novo para você gravar.</p>
+      </div>
+
+      <form id="form-criar" class="formulario" novalidate>
+        <div class="campo">
+          <label class="rotulo" for="link">🔗 Cole o link do vídeo</label>
+          <div class="linha-input">
+            <input id="link" type="url" inputmode="url" placeholder="instagram.com/reel/... ou tiktok.com/..." autocomplete="off">
+            <button type="button" class="btn suave" id="btn-colar">Colar</button>
+          </div>
+          <div class="envio" id="envio">
+            <label class="envio-btn" for="arquivo">
+              <span>ou envie o vídeo salvo</span>
+            </label>
+            <input id="arquivo" type="file" accept="video/*" hidden>
+            <div class="envio-escolhido" id="envio-escolhido" hidden>
+              <span id="envio-nome"></span>
+              <button type="button" class="link-btn" id="btn-tirar-arquivo">tirar</button>
+            </div>
+          </div>
+          <p class="ajuda" id="ajuda-envio">Se o link não funcionar, grave a tela com som e envie aqui.</p>
+        </div>
+
+        <fieldset class="campo">
+          <legend class="rotulo">O que você quer criar?</legend>
+          <div class="chips" data-grupo="criar">
+            <button type="button" class="chip" data-valor="Reels">Reels</button>
+            <button type="button" class="chip" data-valor="TikTok">TikTok</button>
+            <button type="button" class="chip" data-valor="UGC">UGC</button>
+            <button type="button" class="chip" data-valor="Conteúdo pessoal">Conteúdo pessoal</button>
+            <button type="button" class="chip" data-valor="Venda">Venda</button>
+            <button type="button" class="chip" data-valor="Educativo">Educativo</button>
+          </div>
+        </fieldset>
+
+        <div class="campo">
+          <label class="rotulo" for="nicho">Seu nicho</label>
+          <input id="nicho" type="text" placeholder="Beleza, lifestyle, fitness...">
+        </div>
+
+        <div class="campo">
+          <label class="rotulo" for="tema">Sobre o que será o novo vídeo?</label>
+          <textarea id="tema" rows="3" placeholder="Ex.: minha rotina de skincare antes de dormir"></textarea>
+          <p class="ajuda">A IA segue exatamente o que você escrever aqui. O vídeo de referência só empresta a estrutura.</p>
+        </div>
+
+        <div class="campo">
+          <label class="rotulo" for="produto">Produto <span class="opcional">(opcional)</span></label>
+          <input id="produto" type="text" placeholder="Ex.: sérum de vitamina C da marca X">
+        </div>
+
+        <fieldset class="campo">
+          <legend class="rotulo">Estilo</legend>
+          <div class="chips" data-grupo="estilo">
+            <button type="button" class="chip" data-valor="Natural">Natural</button>
+            <button type="button" class="chip" data-valor="Storytelling">Storytelling</button>
+            <button type="button" class="chip" data-valor="Papo entre amigas">Papo entre amigas</button>
+            <button type="button" class="chip" data-valor="Educativo">Educativo</button>
+            <button type="button" class="chip" data-valor="Polêmico">Polêmico</button>
+            <button type="button" class="chip" data-valor="Luxuoso">Luxuoso</button>
+            <button type="button" class="chip" data-valor="Engraçado">Engraçado</button>
+            <button type="button" class="chip" data-valor="Motivacional">Motivacional</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="campo">
+          <legend class="rotulo">Duração</legend>
+          <div class="chips" data-grupo="duracao">
+            <button type="button" class="chip" data-valor="15s">15s</button>
+            <button type="button" class="chip" data-valor="30s">30s</button>
+            <button type="button" class="chip" data-valor="45s">45s</button>
+            <button type="button" class="chip" data-valor="60s">60s</button>
+            <button type="button" class="chip" data-valor="90s">90s</button>
+          </div>
+        </fieldset>
+
+        <details class="campo mais">
+          <summary>Quer dar algum recado para a IA?</summary>
+          <textarea id="observacoes" rows="2" placeholder="Ex.: quero gravar no banheiro, sem mostrar o rosto no começo"></textarea>
+        </details>
+
+        <button type="button" class="perfil-resumo" data-ir="perfil">
+          <span class="perfil-rotulo">Perfil da Creator</span>
+          <span class="perfil-texto" id="perfil-resumo-texto"></span>
+          <span class="perfil-editar">editar</span>
+        </button>
+
+        <p class="erro-campo" id="erro-criar" hidden></p>
+
+        <div class="barra-acao">
+          <button class="btn primario largo grande" type="submit" id="btn-gerar">✨ GERAR MEU ROTEIRO</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- PROCESSANDO -->
+    <section class="view" id="v-processando" hidden>
+      <div class="processando">
+        <div class="pulso" aria-hidden="true"></div>
+        <h2 class="titulo-display pequeno" id="proc-titulo">Criando seu roteiro</h2>
+        <p class="sub" id="proc-sub">Leva de 1 a 2 minutos. Pode deixar a tela aberta.</p>
+        <div class="upload-barra" id="upload-barra" hidden><span id="upload-progresso"></span></div>
+        <ol class="etapas" id="etapas"></ol>
+        <div class="proc-erro" id="proc-erro" hidden>
+          <p id="proc-erro-texto"></p>
+          <div class="proc-erro-acoes">
+            <button class="btn primario" id="btn-enviar-arquivo" hidden>Enviar o arquivo do vídeo</button>
+            <button class="btn suave" id="btn-tentar-de-novo">Voltar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTADO -->
+    <section class="view" id="v-resultado" hidden>
+      <div id="resultado"></div>
+    </section>
+
+    <!-- HISTÓRICO -->
+    <section class="view" id="v-historico" hidden>
+      <h1 class="titulo-display pequeno">Meus roteiros</h1>
+      <p class="sub">Ficam salvos neste aparelho.</p>
+      <div id="lista-historico" class="lista-historico"></div>
+    </section>
+
+    <!-- PERFIL -->
+    <section class="view" id="v-perfil" hidden>
+      <h1 class="titulo-display pequeno">Perfil da Creator</h1>
+      <p class="sub">A IA usa isto em todo roteiro para escrever com a sua voz.</p>
+      <form id="form-perfil" class="formulario">
+        <div class="campo duplo">
+          <div>
+            <label class="rotulo" for="p-nome">Nome</label>
+            <input id="p-nome" type="text">
+          </div>
+          <div>
+            <label class="rotulo" for="p-instagram">Instagram</label>
+            <input id="p-instagram" type="text">
+          </div>
+        </div>
+        <div class="campo">
+          <label class="rotulo" for="p-descricao">Quem é você como creator</label>
+          <textarea id="p-descricao" rows="6"></textarea>
+        </div>
+        <div class="campo">
+          <label class="rotulo" for="p-publico">Seu público <span class="opcional">(opcional)</span></label>
+          <input id="p-publico" type="text" placeholder="Ex.: mulheres de 25 a 40 que querem rotina de cuidado simples">
+        </div>
+        <div class="campo">
+          <label class="rotulo" for="p-jeito">Seu jeito de falar <span class="opcional">(opcional)</span></label>
+          <textarea id="p-jeito" rows="2" placeholder="Expressões que você usa de verdade. Ex.: amiga, olha só, juro, bora"></textarea>
+          <p class="ajuda">Quanto mais parecido com você, mais o roteiro soa como você.</p>
+        </div>
+        <div class="campo">
+          <label class="rotulo" for="p-evitar">O que a IA nunca deve usar <span class="opcional">(opcional)</span></label>
+          <textarea id="p-evitar" rows="2" placeholder="Ex.: palavras como 'maravilhosas', falar de dieta restritiva"></textarea>
+        </div>
+        <div class="acoes-linha">
+          <button class="btn primario" type="submit">Salvar perfil</button>
+          <button class="btn suave" type="button" id="btn-perfil-padrao">Restaurar padrão</button>
+        </div>
+        <p class="ok-campo" id="perfil-salvo" hidden>Perfil salvo.</p>
+      </form>
+      <div class="rodape-perfil">
+        <button class="link-btn" id="btn-sair" hidden>Sair deste aparelho</button>
+        <span class="versao" id="versao"></span>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODO GRAVAR -->
+  <div class="gravar" id="gravar" hidden role="dialog" aria-modal="true" aria-label="Modo gravar">
+    <div class="gravar-topo">
+      <span id="gravar-contador"></span>
+      <div class="gravar-fonte">
+        <button class="gravar-mini" id="gravar-menor" aria-label="Diminuir letra">A−</button>
+        <button class="gravar-mini" id="gravar-maior" aria-label="Aumentar letra">A+</button>
+        <button class="gravar-mini" id="gravar-fechar" aria-label="Fechar">Fechar</button>
+      </div>
+    </div>
+    <div class="gravar-corpo" id="gravar-corpo"></div>
+    <div class="gravar-nav">
+      <button class="btn suave" id="gravar-ant">Anterior</button>
+      <button class="btn primario" id="gravar-prox">Próxima</button>
+    </div>
+  </div>
+
+  <div class="aviso-flutuante" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/static/app.js?v=1.0.0"></script>
+</body>
+</html>

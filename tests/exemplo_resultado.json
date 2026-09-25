@@ -1,0 +1,121 @@
+{
+  "analise": {
+    "tema": "Truque caseiro e barato para um problema de pele que incomoda muita gente.",
+    "nicho": "Beleza e autocuidado.",
+    "publico": "Mulheres de 20 a 40 anos que querem resolver algo da pele sem gastar muito.",
+    "objetivo": "Gerar salvamentos e compartilhamentos com uma dica prática.",
+    "tipo": "Tutorial com transformação.",
+    "gancho": "Mostra o resultado logo no primeiro quadro, com texto na tela citando o preço baixo.",
+    "mecanismo_curiosidade": "Promete um resultado grande com custo pequeno e só explica o método depois.",
+    "estrutura_narrativa": "Resultado, preço, passo a passo, dúvidas respondidas, convite para a parte 2.",
+    "desenvolvimento": "Três passos curtos, cada um em um plano diferente, com o produto na mão.",
+    "como_mantem_atencao": "Corte a cada 2,4s em média e texto novo na tela a cada passo.",
+    "quebra_de_padrao": "Aos 12s ela troca do rosto para a mão aplicando, bem de perto.",
+    "cta": "Pede para comentar uma palavra para receber a parte 2.",
+    "elementos_visuais": "Banheiro claro, luz natural, produto em destaque, rosto de perto.",
+    "ritmo_edicao": "Rápido: 9 cortes em 24s, sem trilha alta por cima da fala.",
+    "texto_na_tela": "Frase curta no topo em quase todos os quadros, fonte branca com fundo.",
+    "demonstracao": "A própria creator aplica o produto em si mesma.",
+    "emocao_desejo": "Desejo de se sentir bonita sem gastar muito e alívio por ser simples.",
+    "mecanismo_retencao": "A pessoa fica para ver se o truque barato funciona de verdade."
+  },
+  "formula": {
+    "sequencia": "RESULTADO → PREÇO → PASSO A PASSO → DÚVIDA RESPONDIDA → CTA DE SÉRIE",
+    "explicacao": "Mostra o fim primeiro, prova que é acessível e entrega o caminho em passos curtos.",
+    "por_que_funciona": "Quem vê o resultado quer saber como. O preço baixo tira a desculpa e o passo a passo faz salvar."
+  },
+  "roteiro": {
+    "titulo": "Minha rotina de pele antes de dormir em 3 passos",
+    "conceito": "Você mostra a pele de manhã e volta na noite anterior para contar os 3 passos simples que fazem diferença.",
+    "cenas": [
+      {
+        "tempo": "0-3s",
+        "fala": "Essa é a minha pele às sete da manhã. E eu não fiz nada de manhã.",
+        "visual": "Rosto de perto, luz da janela, cara de quem acabou de acordar.",
+        "enquadramento": "Rosto bem de perto, câmera na altura dos olhos.",
+        "acao": "Passa a mão no rosto e sorri de leve.",
+        "texto_na_tela": "Pele às 7h, sem nada"
+      },
+      {
+        "tempo": "3-7s",
+        "fala": "O segredo tá na noite anterior. São três passos e leva uns cinco minutos.",
+        "visual": "Corte para o banheiro à noite, luz amarela, produtos na pia.",
+        "enquadramento": "Meio corpo, de frente para o espelho.",
+        "acao": "Prende o cabelo.",
+        "texto_na_tela": "3 passos, 5 minutos"
+      },
+      {
+        "tempo": "7-13s",
+        "fala": "Primeiro, eu limpo com [nome do seu sabonete]. Sem esfregar, só massageando.",
+        "visual": "Espuma no rosto.",
+        "enquadramento": "Rosto de perto.",
+        "acao": "Massageia em círculos.",
+        "texto_na_tela": "1. Limpar sem esfregar"
+      },
+      {
+        "tempo": "13-19s",
+        "fala": "Depois vem o [seu sérum]. Duas gotinhas, pouquinho mesmo.",
+        "visual": "Mão segurando o frasco e pingando na ponta dos dedos.",
+        "enquadramento": "Mão bem de perto.",
+        "acao": "Mostra as duas gotas na ponta dos dedos.",
+        "texto_na_tela": "2. Só 2 gotas"
+      },
+      {
+        "tempo": "19-25s",
+        "fala": "E o hidratante, que é o passo que eu mais pulava. Foi ele que mudou tudo.",
+        "visual": "Espalhando o hidratante com calma.",
+        "enquadramento": "Rosto de perto, de lado.",
+        "acao": "Espalha e dá uma batidinha no rosto.",
+        "texto_na_tela": "3. O que eu pulava"
+      }
+    ],
+    "cta": {
+      "tempo": "25-30s",
+      "fala": "Quer saber qual hidratante eu uso? Comenta NOITE que eu te mando.",
+      "visual": "Volta para o rosto de manhã, sorrindo para a câmera.",
+      "texto_na_tela": "Comenta NOITE"
+    },
+    "textos_na_tela": ["Pele às 7h, sem nada", "3 passos, 5 minutos", "1. Limpar sem esfregar", "2. Só 2 gotas", "3. O que eu pulava", "Comenta NOITE"],
+    "legenda": "Eu achava que pele boa de manhã era coisa de quem acorda cedo pra se arrumar.\n\nNa verdade é o que você faz antes de dormir.\n\nSalva pra fazer hoje à noite e me conta amanhã 🤍\n\n#skincare #rotinadepele #autocuidado #skincarenoturno",
+    "broll": ["Produtos organizados na pia", "Luz do abajur apagando", "Toalha no rosto", "Xícara de chá na cabeceira"],
+    "edicao": {
+      "cortes": "Um corte a cada frase. Tire respirações e pausas.",
+      "zooms": "Zoom leve no rosto da cena 1 e na gota do sérum.",
+      "enquadramento": "Alterne rosto de perto e mão com produto.",
+      "momentos_de_texto": "Texto entra junto com a primeira palavra de cada passo.",
+      "ritmo": "Rápido no começo, um pouco mais calmo no hidratante.",
+      "efeitos": "Transição de corte seco da manhã para a noite. Sem filtro pesado."
+    }
+  },
+  "variacoes": {
+    "ganchos_extras": [
+      "Eu pulava esse passo todo dia e minha pele reclamava.",
+      "Cinco minutos antes de dormir mudaram a minha pele.",
+      "Não é o que você passa de manhã. É o que você faz à noite."
+    ],
+    "ctas_extras": [
+      "Salva pra fazer hoje e volta aqui amanhã pra me contar.",
+      "Manda pra aquela amiga que dorme de maquiagem."
+    ],
+    "segunda_ideia": {
+      "titulo": "O passo que eu pulava",
+      "conceito": "Mesma fórmula, mas começando pelo erro: você mostra o que fazia antes e o que mudou.",
+      "gancho": "Eu fazia tudo certo na pele, menos uma coisa.",
+      "passos": ["Mostra a rotina antiga rapidinho", "Conta qual passo pulava", "Mostra o passo sendo feito", "Pede para comentarem qual passo elas pulam"]
+    }
+  },
+  "checagem_qualidade": {
+    "gancho_forte": true,
+    "entrega_depois_do_gancho": true,
+    "existe_progressao": true,
+    "motivo_para_continuar": true,
+    "parece_natural": true,
+    "gravavel_por_pessoa_real": true,
+    "nao_copia_o_original": true,
+    "cta_coerente": true,
+    "cenas_claras": true,
+    "especifico_nao_generico": true
+  },
+  "campos_para_preencher": ["[nome do seu sabonete]", "[seu sérum]"],
+  "avisos": []
+}

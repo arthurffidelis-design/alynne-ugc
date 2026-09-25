@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: roteiro-viral-alynne
+    runtime: python
+    plan: starter
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # 1 worker só: os processamentos ficam na memória do servidor
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /versao
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: APP_SENHA
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CLAUDE_MODELO
+        value: claude-opus-5-5
+      - key: IG_COOKIES
+        sync: false
