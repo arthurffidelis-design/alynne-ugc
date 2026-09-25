@@ -200,3 +200,95 @@ def test_erro_de_download_vira_mensagem_amigavel(cliente, monkeypatch):
 def test_sem_link_nem_arquivo(cliente):
     cliente.post("/api/login", json={"senha": "teste123"})
     assert cliente.post("/api/gerar", data={"link": "oi", "pedido": "{}"}).status_code == 400
+
+
+# ------------------------------------------------------------ v1.0.1: JSON sem "saída estruturada"
+
+def test_instrucao_json_tem_todas_as_chaves():
+    texto = motor.instrucao_json(prompts.SCHEMA_COMPLETO)
+    for chave in ["analise", "formula", "roteiro", "cenas", "texto_na_tela", "ganchos_extras", "checagem_qualidade",
+                  "campos_para_preencher", "avisos"]:
+        assert f'"{chave}"' in texto
+
+
+def test_extrair_json_tolerante():
+    bruto = json.dumps(EXEMPLO, ensure_ascii=False)
+    assert motor.extrair_json(bruto)["roteiro"]["titulo"]
+    assert motor.extrair_json("```json\n" + bruto + "\n```")["roteiro"]["titulo"]
+    assert motor.extrair_json("Aqui está:\n" + bruto + "\nPronto.")["roteiro"]["titulo"]
+    for ruim in ["", "sem json", '{"roteiro": ', '{"outra": 1}']:
+        with pytest.raises(ValueError):
+            motor.extrair_json(ruim)
+
+
+def test_normalizar_completa_campos_e_tipos():
+    parcial = {"roteiro": {"titulo": "T", "cenas": [{"fala": "oi", "tempo": 3}], "broll": "uma ideia"},
+               "checagem_qualidade": {"gancho_forte": "true"}}
+    n = motor.normalizar(parcial, prompts.SCHEMA_COMPLETO)
+    jsonschema = pytest.importorskip("jsonschema")
+    jsonschema.validate(n, prompts.SCHEMA_COMPLETO)
+    assert n["roteiro"]["cenas"][0]["tempo"] == "3"
+    assert n["roteiro"]["broll"] == ["uma ideia"]
+    assert n["checagem_qualidade"]["gancho_forte"] is True
+    assert n["variacoes"]["ganchos_extras"] == []
+
+
+class _Final:
+    def __init__(self, texto):
+        self.content = [type("B", (), {"type": "text", "text": texto})()]
+        self.stop_reason = "end_turn"
+        self.usage = type("U", (), {"input_tokens": 10, "output_tokens": 5})()
+
+
+class _ClienteFalso:
+    def __init__(self, respostas):
+        self.respostas = list(respostas)
+        self.chamadas = []
+        cliente = self
+
+        class _Stream:
+            def __init__(self, kwargs):
+                cliente.chamadas.append(kwargs)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+            def get_final_message(self):
+                return _Final(cliente.respostas.pop(0))
+
+        self.messages = type("M", (), {"stream": lambda _s, **kw: _Stream(kw)})()
+
+
+def _instalar_cliente(monkeypatch, respostas):
+    import anthropic
+
+    falso = _ClienteFalso(respostas)
+    monkeypatch.setattr(anthropic, "Anthropic", lambda **kw: falso)
+    monkeypatch.setattr(config, "ANTHROPIC_API_KEY", "chave-falsa")
+    return falso
+
+
+def test_chamada_sem_output_config(monkeypatch):
+    falso = _instalar_cliente(monkeypatch, [json.dumps(EXEMPLO, ensure_ascii=False)])
+    r = motor._chamar_claude("sistema", [{"type": "text", "text": "x"}], prompts.SCHEMA_COMPLETO)
+    assert r["roteiro"]["titulo"] == EXEMPLO["roteiro"]["titulo"]
+    assert "output_config" not in falso.chamadas[0]
+    assert "RESPOSTA EM JSON" in falso.chamadas[0]["system"]
+    assert r["_uso"]["entrada"] == 10
+
+
+def test_chamada_corrige_json_quebrado(monkeypatch):
+    falso = _instalar_cliente(monkeypatch, ["ops, não é json", json.dumps(EXEMPLO, ensure_ascii=False)])
+    r = motor._chamar_claude("sistema", [{"type": "text", "text": "x"}], prompts.SCHEMA_COMPLETO)
+    assert r["roteiro"]["cenas"] and len(falso.chamadas) == 2
+    assert falso.chamadas[1]["messages"][-1]["role"] == "user"
+    assert r["_uso"]["entrada"] == 20
+
+
+def test_chamada_desiste_depois_de_2_tentativas(monkeypatch):
+    _instalar_cliente(monkeypatch, ["nada", "nada de novo"])
+    with pytest.raises(motor.ErroMotor):
+        motor._chamar_claude("sistema", [{"type": "text", "text": "x"}], prompts.SCHEMA_COMPLETO)

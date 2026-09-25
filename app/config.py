@@ -1,8 +1,8 @@
 """Configuração do app. Tudo vem de variáveis de ambiente (Render > Environment)."""
 import os
 
-VERSAO = "1.0.0"
-DATA_VERSAO = "2026-09-24"
+VERSAO = "1.0.1"
+DATA_VERSAO = "2026-09-25"
 
 APP_NOME = os.getenv("APP_NOME", "Roteiro Viral")
 

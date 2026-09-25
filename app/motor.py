@@ -115,20 +115,92 @@ def bloco_video(dados: dict) -> str:
     return "\n".join(linhas)
 
 
-def _chamar_claude(system: str, conteudo: list, schema: dict) -> dict:
-    if not config.ANTHROPIC_API_KEY:
-        raise ErroMotor("Falta configurar a chave ANTHROPIC_API_KEY no Render.")
+# ------------------------------------------------------------------ formato JSON
+# v1.0.1: o schema é grande demais para a "saída estruturada" da API (erro 400
+# "compiled grammar is too large"). Agora o formato vai descrito no prompt e o
+# app valida e completa o JSON do lado de cá, com 1 tentativa de correção.
 
+def esqueleto(no: dict):
+    """Modelo do JSON esperado, com a descrição de cada campo no lugar do valor."""
+    tipo = no.get("type")
+    if tipo == "object":
+        return {k: esqueleto(v) for k, v in no["properties"].items()}
+    if tipo == "array":
+        return [esqueleto(no["items"])]
+    if tipo == "boolean":
+        return True
+    return f"<{no.get('description', 'texto')}>"
+
+
+def instrucao_json(schema: dict) -> str:
+    return (
+        "\n\n==================================================\n"
+        "RESPOSTA EM JSON (obrigatório)\n"
+        "==================================================\n"
+        "Responda SOMENTE com um objeto JSON válido: sem texto antes ou depois, sem ``` e sem comentários.\n"
+        "Use exatamente as chaves abaixo. Os textos entre < > explicam o que vai em cada campo (troque pelo "
+        "conteúdo real). Listas levam quantos itens forem pedidos. Os campos true/false da checagem são booleanos.\n"
+        + json.dumps(esqueleto(schema), ensure_ascii=False, indent=1)
+    )
+
+
+def extrair_json(texto: str) -> dict:
+    t = (texto or "").strip()
+    if t.startswith("```"):
+        t = t.split("\n", 1)[1] if "\n" in t else ""
+        if t.rstrip().endswith("```"):
+            t = t.rstrip()[:-3]
+    try:
+        obj = json.loads(t)
+    except json.JSONDecodeError:
+        inicio, fim = t.find("{"), t.rfind("}")
+        if inicio < 0 or fim <= inicio:
+            raise ValueError("sem objeto JSON na resposta")
+        try:
+            obj = json.loads(t[inicio : fim + 1])
+        except json.JSONDecodeError as e:
+            raise ValueError(f"JSON inválido: {e}")
+    if not isinstance(obj, dict) or not isinstance(obj.get("roteiro"), dict):
+        raise ValueError("JSON sem o roteiro")
+    return obj
+
+
+def normalizar(valor, no: dict):
+    """Garante todas as chaves e tipos do schema, para a tela nunca quebrar."""
+    tipo = no.get("type")
+    if tipo == "object":
+        base = valor if isinstance(valor, dict) else {}
+        return {k: normalizar(base.get(k), v) for k, v in no["properties"].items()}
+    if tipo == "array":
+        if valor is None or valor == "":
+            valor = []
+        elif not isinstance(valor, list):
+            valor = [valor]
+        return [normalizar(v, no["items"]) for v in valor if v is not None and v != ""]
+    if tipo == "boolean":
+        if isinstance(valor, str):
+            return valor.strip().lower() in ("true", "sim", "yes", "1")
+        return bool(valor)
+    if valor is None:
+        return ""
+    if isinstance(valor, str):
+        return valor
+    if isinstance(valor, (dict, list)):
+        return json.dumps(valor, ensure_ascii=False)
+    return str(valor)
+
+
+# ------------------------------------------------------------------ chamada
+
+def _enviar(cliente, system: str, mensagens: list):
     import anthropic
 
-    cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, timeout=600, max_retries=2)
     try:
         with cliente.messages.stream(
             model=config.CLAUDE_MODELO,
             max_tokens=config.CLAUDE_MAX_TOKENS,
             system=system,
-            messages=[{"role": "user", "content": conteudo}],
-            output_config={"format": {"type": "json_schema", "schema": schema}},
+            messages=mensagens,
         ) as stream:
             final = stream.get_final_message()
     except anthropic.AuthenticationError:
@@ -145,22 +217,52 @@ def _chamar_claude(system: str, conteudo: list, schema: dict) -> dict:
         raise ErroMotor("A IA não quis gerar esse roteiro. Tente mudar o tema ou o vídeo de referência.")
     if final.stop_reason == "max_tokens":
         raise ErroMotor("A resposta ficou grande demais e foi cortada. Tente uma duração menor.")
+    return final
 
-    texto = "".join(getattr(b, "text", "") for b in final.content if getattr(b, "type", "") == "text")
+
+def _texto(final) -> str:
+    return "".join(getattr(b, "text", "") for b in final.content if getattr(b, "type", "") == "text")
+
+
+def _chamar_claude(system: str, conteudo: list, schema: dict) -> dict:
+    if not config.ANTHROPIC_API_KEY:
+        raise ErroMotor("Falta configurar a chave ANTHROPIC_API_KEY no Render.")
+
+    import anthropic
+
+    cliente = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, timeout=600, max_retries=2)
+    system_final = system + instrucao_json(schema)
+    mensagens = [{"role": "user", "content": conteudo}]
+
+    final = _enviar(cliente, system_final, mensagens)
+    texto = _texto(final)
+    entrada = getattr(final.usage, "input_tokens", 0) or 0
+    saida = getattr(final.usage, "output_tokens", 0) or 0
     try:
-        resultado = json.loads(texto)
-    except json.JSONDecodeError:
-        inicio, fim = texto.find("{"), texto.rfind("}")
-        if inicio < 0 or fim <= inicio:
+        bruto = extrair_json(texto)
+    except ValueError as e:
+        log.warning("Resposta fora do formato (%s). Pedindo correção.", e)
+        if texto.strip():
+            mensagens.append({"role": "assistant", "content": texto})
+        mensagens.append(
+            {
+                "role": "user",
+                "content": "A resposta anterior não veio como um objeto JSON válido e completo. "
+                "Responda de novo SOMENTE com o objeto JSON completo, exatamente no formato pedido.",
+            }
+        )
+        final = _enviar(cliente, system_final, mensagens)
+        texto = _texto(final)
+        entrada += getattr(final.usage, "input_tokens", 0) or 0
+        saida += getattr(final.usage, "output_tokens", 0) or 0
+        try:
+            bruto = extrair_json(texto)
+        except ValueError:
+            log.error("Resposta inválida mesmo após correção: %s", texto[:500])
             raise ErroMotor("A IA devolveu um formato inesperado. Tente de novo.")
-        resultado = json.loads(texto[inicio : fim + 1])
 
-    uso = getattr(final, "usage", None)
-    resultado["_uso"] = {
-        "modelo": config.CLAUDE_MODELO,
-        "entrada": getattr(uso, "input_tokens", None),
-        "saida": getattr(uso, "output_tokens", None),
-    }
+    resultado = normalizar(bruto, schema)
+    resultado["_uso"] = {"modelo": config.CLAUDE_MODELO, "entrada": entrada, "saida": saida}
     return resultado
 
 
