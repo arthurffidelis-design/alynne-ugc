@@ -24,3 +24,6 @@ services:
         value: claude-opus-5-5
       - key: IG_COOKIES
         sync: false
+      # Render > alynne-studio-db > Connections > Internal Database URL
+      - key: DATABASE_URL
+        sync: false

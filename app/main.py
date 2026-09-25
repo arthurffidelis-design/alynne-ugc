@@ -15,19 +15,27 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, motor, transcricao, video
+from . import config, db, motor, transcricao, video
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("roteiro")
 
 PASTA_STATIC = os.path.join(os.path.dirname(__file__), "static")
 
-app = FastAPI(title=config.APP_NOME, version=config.VERSAO, docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def ciclo_de_vida(_app):
+    db.iniciar()
+    yield
+    db.fechar()
+
+
+app = FastAPI(title=config.APP_NOME, version=config.VERSAO, docs_url=None, redoc_url=None, lifespan=ciclo_de_vida)
 app.mount("/static", StaticFiles(directory=PASTA_STATIC), name="static")
 
 executor = ThreadPoolExecutor(max_workers=2)
@@ -137,6 +145,7 @@ async def versao():
         "openai": bool(config.OPENAI_API_KEY),
         "modelo": config.CLAUDE_MODELO,
         "cookies_instagram": bool(config.IG_COOKIES),
+        "banco": db.status(),
     }
 
 
@@ -151,6 +160,7 @@ async def api_config(request: Request):
         "tem_claude": bool(config.ANTHROPIC_API_KEY),
         "tem_transcricao": bool(config.OPENAI_API_KEY),
         "max_upload_mb": config.MAX_UPLOAD_MB,
+        "banco": db.status(),
     }
 
 
@@ -165,6 +175,7 @@ def _novo_job(etapas) -> str:
             "etapas": [{"id": i, "nome": n, "status": "pendente"} for i, n in etapas],
             "resultado": None,
             "meta": None,
+            "item_id": None,
             "erro": None,
             "codigo": None,
             "criado": time.time(),
@@ -196,14 +207,14 @@ def _falhar(job_id: str, mensagem: str, codigo: str = "erro"):
                     e["status"] = "erro"
 
 
-def _concluir(job_id: str, resultado: dict, meta: dict | None):
+def _concluir(job_id: str, resultado: dict, meta: dict | None, item_id: str | None = None):
     with TRAVA:
         job = JOBS.get(job_id)
         if job:
             for e in job["etapas"]:
                 if e["status"] in ("andamento", "pendente"):
                     e["status"] = "feito"
-            job.update(status="pronto", resultado=resultado, meta=meta)
+            job.update(status="pronto", resultado=resultado, meta=meta, item_id=item_id)
 
 
 def _limpar_jobs_antigos():
@@ -307,7 +318,8 @@ def _processar(job_id: str, pasta: str, link: str, arquivo: str | None, nome_arq
 
         meta = {**dados, "miniatura": _miniatura(info.caminho, min(1.0, info.duracao / 2), pasta),
                 "quadros_analisados": len(quadros)}
-        _concluir(job_id, resultado, meta)
+        item_id = _guardar_novo_roteiro(pedido, meta, resultado)
+        _concluir(job_id, resultado, meta, item_id)
     except video.ErroVideo as e:
         _falhar(job_id, e.mensagem, e.codigo)
     except motor.ErroMotor as e:
@@ -379,7 +391,8 @@ def _processar_ajuste(job_id: str, corpo: dict):
             corpo.get("resultado") or {}, corpo.get("meta") or {}, corpo.get("pedido") or {},
             corpo.get("perfil") or {}, str(corpo.get("instrucao") or "").strip()[:1500],
         )
-        _concluir(job_id, resultado, corpo.get("meta"))
+        _guardar_ajuste(corpo.get("item_id"), resultado)
+        _concluir(job_id, resultado, corpo.get("meta"), corpo.get("item_id"))
     except motor.ErroMotor as e:
         _falhar(job_id, e.mensagem, "erro_ia")
     except Exception:
@@ -397,3 +410,111 @@ async def ajustar(request: Request):
     job_id = _novo_job(ETAPAS_AJUSTAR)
     executor.submit(_processar_ajuste, job_id, corpo)
     return {"job_id": job_id}
+
+
+# ================================================================ banco de dados (v1.1.1)
+
+def _banco() -> bool:
+    """Banco pronto? Se falhou na subida (ex.: banco ainda criando), tenta de novo."""
+    if db.status() == "erro":
+        db.iniciar()
+    return db.disponivel()
+
+
+def _novo_id() -> str:
+    numero, letras, texto = db.agora_ms(), "0123456789abcdefghijklmnopqrstuvwxyz", ""
+    while numero:
+        numero, resto = divmod(numero, 36)
+        texto = letras[resto] + texto
+    return texto + uuid.uuid4().hex[:3]
+
+
+def _guardar_novo_roteiro(pedido: dict, meta: dict, resultado: dict) -> str | None:
+    """Salva no banco assim que o roteiro fica pronto (mesmo se o celular fechar)."""
+    if not _banco():
+        return None
+    agora = db.agora_ms()
+    meta_salva = dict(meta)
+    if meta_salva.get("transcricao"):
+        meta_salva["transcricao"] = str(meta_salva["transcricao"])[:8000]
+    item = {"id": _novo_id(), "criado": agora, "atualizado": agora, "pedido": pedido,
+            "meta": meta_salva, "resultado": resultado, "checklist": {}}
+    try:
+        db.salvar_roteiro(item)
+        return item["id"]
+    except Exception:
+        log.exception("Não consegui salvar o roteiro novo no banco")
+        return None
+
+
+def _guardar_ajuste(item_id: str | None, resultado: dict):
+    if not item_id or not _banco():
+        return
+    try:
+        item = db.obter_roteiro(str(item_id))
+        if not item:
+            return
+        item.update(anterior=item.get("resultado"), resultado=resultado, checklist={},
+                    ajustes=int(item.get("ajustes") or 0) + 1, atualizado=db.agora_ms())
+        db.salvar_roteiro(item)
+    except Exception:
+        log.exception("Não consegui salvar o ajuste no banco")
+
+
+def _exigir_banco():
+    if not _banco():
+        raise HTTPException(503, "Banco de dados indisponível.")
+
+
+@app.get("/api/roteiros")
+def api_listar_roteiros():
+    _exigir_banco()
+    return db.listar_roteiros()
+
+
+@app.get("/api/roteiros/{item_id}")
+def api_obter_roteiro(item_id: str):
+    _exigir_banco()
+    item = db.obter_roteiro(item_id)
+    if not item:
+        raise HTTPException(404, "Roteiro não encontrado.")
+    return item
+
+
+@app.put("/api/roteiros/{item_id}")
+async def api_salvar_roteiro(item_id: str, request: Request):
+    _exigir_banco()
+    item = await request.json()
+    if not isinstance(item, dict) or str(item.get("id")) != item_id or not isinstance(item.get("resultado"), dict):
+        raise HTTPException(400, "Roteiro inválido.")
+    try:
+        gravou = db.salvar_roteiro(item)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "gravou": gravou}
+
+
+@app.delete("/api/roteiros/{item_id}")
+def api_apagar_roteiro(item_id: str):
+    _exigir_banco()
+    db.apagar_roteiro(item_id)
+    return {"ok": True}
+
+
+@app.get("/api/preferencias")
+def api_preferencias():
+    _exigir_banco()
+    return db.preferencias()
+
+
+@app.put("/api/preferencias/{chave}")
+async def api_salvar_preferencia(chave: str, request: Request):
+    _exigir_banco()
+    corpo = await request.json()
+    if not isinstance(corpo, dict) or "valor" not in corpo:
+        raise HTTPException(400, "Preferência inválida.")
+    try:
+        gravou = db.salvar_preferencia(chave, corpo["valor"], corpo.get("atualizado"))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "gravou": gravou}

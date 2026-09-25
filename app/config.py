@@ -1,7 +1,7 @@
 """Configuração do app. Tudo vem de variáveis de ambiente (Render > Environment)."""
 import os
 
-VERSAO = "1.1.0"
+VERSAO = "1.1.1"
 DATA_VERSAO = "2026-09-25"
 
 APP_NOME = os.getenv("APP_NOME", "Alynne Studio")
@@ -20,6 +20,9 @@ TRANSCRICAO_MODELOS = [
     for m in os.getenv("TRANSCRICAO_MODELOS", "gpt-transcribe,gpt-4o-transcribe,whisper-1").split(",")
     if m.strip()
 ]
+
+# Banco de dados (Render > Postgres > Internal Database URL). Vazio = só no aparelho.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 # Acesso
 APP_SENHA = os.getenv("APP_SENHA", "").strip()

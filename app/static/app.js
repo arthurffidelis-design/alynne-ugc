@@ -31,13 +31,129 @@
   }
   function remover(chave) { try { localStorage.removeItem(chave); } catch (e) { /* ok */ } }
 
+  // ------------------------------------------------------------ roteiros: aparelho + banco (v1.1.1)
+  // O aparelho guarda uma cópia (rápido e funciona sem internet). Com o banco ligado,
+  // tudo vai também para o servidor, que passa a ser a fonte principal.
   const historico = () => ler("rv_historico", []);
-  function salvarItem(item) {
+  const acharItem = (id) => historico().find((i) => i.id === id);
+
+  function resumoDe(it) {
+    return {
+      id: it.id, criado: it.criado, atualizado: it.atualizado || it.criado,
+      titulo: ((it.resultado || {}).roteiro || {}).titulo || "Roteiro",
+      tema: (it.pedido || {}).tema || "", miniatura: (it.meta || {}).miniatura || "",
+    };
+  }
+  function guardarLocal(item) {
     const lista = historico().filter((i) => i.id !== item.id);
     lista.unshift(item);
+    lista.sort((a, b) => (b.criado || 0) - (a.criado || 0));
     gravar("rv_historico", lista.slice(0, 40));
   }
-  const acharItem = (id) => historico().find((i) => i.id === id);
+  function salvarItem(item) {
+    item.atualizado = Date.now();
+    guardarLocal(item);
+    if (estado.resumos) {
+      estado.resumos = [resumoDe(item)].concat(estado.resumos.filter((r) => r.id !== item.id))
+        .sort((a, b) => (b.criado || 0) - (a.criado || 0));
+    }
+    if (estado.banco) enviarItem(item);
+  }
+  function apagarItem(id) {
+    gravar("rv_historico", historico().filter((i) => i.id !== id));
+    if (estado.resumos) estado.resumos = estado.resumos.filter((r) => r.id !== id);
+    if (estado.banco) {
+      fetch(`/api/roteiros/${encodeURIComponent(id)}`, { method: "DELETE", credentials: "same-origin" })
+        .then((r) => { if (!r.ok) throw new Error(); tirarPendente(id); })
+        .catch(() => marcarPendente({ tipo: "apagar", id }));
+    }
+  }
+  function enviarItem(item) {
+    return fetch(`/api/roteiros/${encodeURIComponent(item.id)}`, {
+      method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    }).then((r) => { if (!r.ok) throw new Error(); tirarPendente(item.id); })
+      .catch(() => marcarPendente({ tipo: "salvar", id: item.id }));
+  }
+  function marcarPendente(p) {
+    const lista = ler("rv_pendentes", []).filter((x) => x.id !== p.id);
+    lista.push(p);
+    gravar("rv_pendentes", lista);
+  }
+  function tirarPendente(id) { gravar("rv_pendentes", ler("rv_pendentes", []).filter((x) => x.id !== id)); }
+
+  // ------------------------------------------------------------ preferências: aparelho + banco
+  const CHAVES_PREF = ["perfil", "inspiracoes", "ultimo_pedido"];
+  function salvarPref(chave, valor) {
+    gravar("rv_" + chave, valor);
+    const ts = ler("rv_prefs_ts", {});
+    ts[chave] = Date.now();
+    gravar("rv_prefs_ts", ts);
+    if (estado.banco) enviarPref(chave, valor, ts[chave]);
+  }
+  function enviarPref(chave, valor, atualizado) {
+    return fetch(`/api/preferencias/${chave}`, {
+      method: "PUT", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valor, atualizado }),
+    }).then((r) => { if (!r.ok) throw new Error(); tirarPendente("pref:" + chave); })
+      .catch(() => marcarPendente({ tipo: "pref", id: "pref:" + chave, chave }));
+  }
+
+  async function sincronizar() {
+    if (!estado.banco) return;
+    try {
+      // 1) o que ficou pendente (sem internet na hora de salvar)
+      for (const p of ler("rv_pendentes", [])) {
+        if (p.tipo === "salvar") {
+          const it = acharItem(p.id);
+          if (it) await enviarItem(it); else tirarPendente(p.id);
+        } else if (p.tipo === "apagar") {
+          const r = await fetch(`/api/roteiros/${encodeURIComponent(p.id)}`, { method: "DELETE", credentials: "same-origin" });
+          if (r.ok) tirarPendente(p.id);
+        } else if (p.tipo === "pref") {
+          await enviarPref(p.chave, ler("rv_" + p.chave, null), ler("rv_prefs_ts", {})[p.chave] || Date.now());
+        }
+      }
+      // 2) roteiros: sobe o que só existe aqui (migração) e respeita o que foi apagado em outro aparelho
+      const servidor = await api("/api/roteiros");
+      const apagados = new Set(servidor.apagados || []);
+      const noServidor = new Map((servidor.itens || []).map((r) => [r.id, r]));
+      const local = historico();
+      const vivos = local.filter((i) => !apagados.has(i.id));
+      if (vivos.length !== local.length) gravar("rv_historico", vivos);
+      let migrados = 0;
+      for (const it of vivos) {
+        const r = noServidor.get(it.id);
+        if (!it.atualizado) it.atualizado = it.criado || Date.now();
+        if (!r || it.atualizado > r.atualizado) {
+          await enviarItem(it);
+          noServidor.set(it.id, resumoDe(it));
+          if (!r) migrados += 1;
+        }
+      }
+      estado.resumos = [...noServidor.values()].sort((a, b) => (b.criado || 0) - (a.criado || 0));
+      // 3) preferências: vale a mais nova
+      const prefs = await api("/api/preferencias");
+      const ts = ler("rv_prefs_ts", {});
+      for (const chave of CHAVES_PREF) {
+        const doServidor = prefs[chave];
+        const valorLocal = ler("rv_" + chave, null);
+        const tsLocal = ts[chave] || 0;
+        if (doServidor && doServidor.atualizado >= tsLocal) {
+          gravar("rv_" + chave, doServidor.valor);
+          ts[chave] = doServidor.atualizado;
+        } else if (valorLocal !== null) {
+          ts[chave] = tsLocal || Date.now();
+          await enviarPref(chave, valorLocal, ts[chave]);
+        }
+      }
+      gravar("rv_prefs_ts", ts);
+      if (migrados) toast(`${migrados} roteiro${migrados > 1 ? "s" : ""} salvo${migrados > 1 ? "s" : ""} na nuvem`);
+    } catch (e) {
+      if (e && e.message === "sem_login") return;
+      /* sem internet: tenta de novo na próxima abertura */
+    }
+  }
 
   function perfilAtual() {
     const padrao = (estado.config && estado.config.perfil_padrao) || {};
@@ -107,6 +223,16 @@
     const [nome, id] = (location.hash.replace("#", "") || "criar").split("/");
     if (nome === "resultado" && id) {
       const item = acharItem(id);
+      const resumo = (estado.resumos || []).find((r) => r.id === id);
+      const desatualizado = !item || (resumo && resumo.atualizado > (item.atualizado || 0));
+      if (desatualizado && estado.banco) {
+        if (!item) toast("Abrindo roteiro...");
+        api(`/api/roteiros/${encodeURIComponent(id)}`).then((doServidor) => {
+          guardarLocal(doServidor);
+          if (location.hash === `#resultado/${id}`) { renderResultado(doServidor); mostrar("resultado"); }
+        }).catch(() => { if (!item) ir("historico"); });
+        if (!item) return;
+      }
       if (!item) return ir("criar");
       renderResultado(item);
       return mostrar("resultado");
@@ -148,6 +274,7 @@
       $("#senha").value = "";
       rota();
       retomarJob();
+      sincronizar().then(depoisDeSincronizar);
     } catch (err) {
       erro.textContent = err.message; erro.hidden = false;
     }
@@ -230,7 +357,7 @@
       duracao: valorChip("duracao"),
       observacoes: $("#observacoes").value.trim(),
     };
-    gravar("rv_ultimo_pedido", { criar: pedido.criar, estilo: pedido.estilo, duracao: pedido.duracao, nicho: pedido.nicho });
+    salvarPref("ultimo_pedido", { criar: pedido.criar, estilo: pedido.estilo, duracao: pedido.duracao, nicho: pedido.nicho });
 
     const dados = new FormData();
     dados.append("link", link);
@@ -340,7 +467,7 @@
         const meta = Object.assign({}, dados.meta || {});
         if (meta.transcricao) meta.transcricao = String(meta.transcricao).slice(0, 8000);
         item = {
-          id: Date.now().toString(36), criado: Date.now(), pedido: job.pedido,
+          id: dados.item_id || Date.now().toString(36), criado: Date.now(), pedido: job.pedido,
           meta, resultado: dados.resultado, checklist: {},
         };
         $("#link").value = ""; limparArquivo();
@@ -605,7 +732,7 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           resultado: atual.resultado, meta: Object.assign({}, atual.meta, { miniatura: "" }),
-          pedido: atual.pedido, perfil: perfilAtual(), instrucao,
+          pedido: atual.pedido, perfil: perfilAtual(), instrucao, item_id: atual.id,
         }),
       });
       gravar("rv_job", { id: corpo.job_id, tipo: "ajustar", itemId: atual.id, criado: Date.now() });
@@ -700,28 +827,29 @@
 
   // ------------------------------------------------------------ histórico
   function renderHistorico() {
-    const itens = historico();
+    $("#sub-historico").textContent = estado.banco
+      ? "Salvos na nuvem. Aparecem em qualquer aparelho em que você entrar."
+      : "Ficam salvos neste aparelho.";
+    const porId = new Map(historico().map((i) => [i.id, resumoDe(i)]));
+    (estado.resumos || []).forEach((r) => porId.set(r.id, r));
+    const itens = [...porId.values()].sort((a, b) => (b.criado || 0) - (a.criado || 0));
     const el = $("#lista-historico");
     if (!itens.length) {
       el.innerHTML = `<p class="vazio">Nenhum roteiro ainda. Os que você gerar aparecem aqui.</p>`;
       return;
     }
-    el.innerHTML = itens.map((i) => {
-      const t = (i.resultado && i.resultado.roteiro && i.resultado.roteiro.titulo) || "Roteiro";
-      const mini = i.meta && i.meta.miniatura;
-      return `<div class="item-hist" data-abrir="${esc(i.id)}" role="button" tabindex="0">
-        ${mini ? `<img src="${esc(mini)}" alt="">` : `<span class="sem-mini"></span>`}
-        <div><h3>${esc(t)}</h3><p>${esc(dataCurta(i.criado))} · ${esc((i.pedido && i.pedido.tema) || "").slice(0, 60)}</p></div>
+    el.innerHTML = itens.map((i) => `<div class="item-hist" data-abrir="${esc(i.id)}" role="button" tabindex="0">
+        ${i.miniatura ? `<img src="${esc(i.miniatura)}" alt="">` : `<span class="sem-mini"></span>`}
+        <div><h3>${esc(i.titulo)}</h3><p>${esc(dataCurta(i.criado))} · ${esc(String(i.tema || "").slice(0, 60))}</p></div>
         <button class="apagar" data-apagar="${esc(i.id)}" aria-label="Apagar">apagar</button>
-      </div>`;
-    }).join("");
+      </div>`).join("");
   }
   $("#lista-historico").addEventListener("click", (e) => {
     const apagar = e.target.closest("[data-apagar]");
     if (apagar) {
       e.stopPropagation();
       if (confirm("Apagar este roteiro?")) {
-        gravar("rv_historico", historico().filter((i) => i.id !== apagar.dataset.apagar));
+        apagarItem(apagar.dataset.apagar);
         renderHistorico();
       }
       return;
@@ -745,13 +873,13 @@
     e.preventDefault();
     const p = {};
     Object.entries(CAMPOS_PERFIL).forEach(([k, s]) => { p[k] = $(s).value.trim(); });
-    gravar("rv_perfil", p);
+    salvarPref("perfil", p);
     $("#perfil-salvo").hidden = false;
     toast("Perfil salvo");
   });
   $("#btn-perfil-padrao").addEventListener("click", () => {
     if (!confirm("Voltar o perfil para o texto padrão?")) return;
-    remover("rv_perfil");
+    salvarPref("perfil", {});
     carregarPerfil();
     toast("Perfil padrão restaurado");
   });
@@ -761,7 +889,7 @@
   });
 
   // ------------------------------------------------------------ perfis de inspiração
-  // Salvos neste aparelho por enquanto; na v1.2 passam para o banco do servidor.
+  // Salvos no aparelho e no banco (v1.1.1). A análise semanal da v2.0 lê do banco.
   const MAX_INSPIRACOES = 10;
   const CAMINHOS_DE_POST = ["p", "reel", "reels", "tv", "stories", "explore", "accounts", "direct", "s"];
   const inspiracoes = () => ler("rv_inspiracoes", []);
@@ -815,7 +943,7 @@
     if (!r.erro && lista.length >= MAX_INSPIRACOES) r.erro = `O limite é de ${MAX_INSPIRACOES} perfis. Remova um para adicionar outro.`;
     if (r.erro) { erro.textContent = r.erro; erro.hidden = false; return; }
     lista.push({ usuario: r.usuario, adicionado: Date.now() });
-    gravar("rv_inspiracoes", lista);
+    salvarPref("inspiracoes", lista);
     $("#inspiracao").value = "";
     renderInspiracoes();
     toast(`@${r.usuario} adicionado`);
@@ -825,7 +953,7 @@
     if (!b) return;
     const usuario = b.dataset.removerInspiracao;
     if (!confirm(`Remover @${usuario} das inspirações?`)) return;
-    gravar("rv_inspiracoes", inspiracoes().filter((i) => i.usuario !== usuario));
+    salvarPref("inspiracoes", inspiracoes().filter((i) => i.usuario !== usuario));
     renderInspiracoes();
   });
 
@@ -849,12 +977,22 @@
       estado.config = { perfil_padrao: {}, max_upload_mb: 200 };
     }
     const c = estado.config;
-    $("#versao").textContent = c.versao ? `versão ${c.versao}` : "";
+    estado.banco = c.banco === "ok";
+    $("#versao").textContent = c.versao ? `versão ${c.versao}${estado.banco ? " · salvo na nuvem" : ""}` : "";
     $("#btn-sair").hidden = !c.precisa_senha;
     if (c.precisa_senha && !c.autenticado) return mostrarLogin();
     estado.precisaLogin = false;
     rota();
     retomarJob();
+    sincronizar().then(depoisDeSincronizar);
+  }
+
+  function depoisDeSincronizar() {
+    const nome = (location.hash.replace("#", "") || "criar").split("/")[0];
+    if (nome === "historico") renderHistorico();
+    else if (nome === "analise") renderInspiracoes();
+    else if (nome === "perfil") carregarPerfil();
+    else if (nome === "criar") atualizarResumoPerfil();
   }
 
   if ("serviceWorker" in navigator) {

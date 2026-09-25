@@ -2,7 +2,7 @@
 
 App web da Alynne (@alynnedmoura). Ela cola o link de um vídeo que viralizou (ou envia o arquivo), a IA assiste o vídeo, entende a estrutura que prendeu as pessoas e entrega um roteiro novo, com o tema dela e a voz dela, pronto para ler, gravar e editar.
 
-Versão 1.1.0 (25/09/2026): visual Rosé Editorial, menu inferior (Criar, Calendário, Análise, Roteiros, Perfil) e perfis de inspiração. Guia do app da Meta em `docs/INSTRUCOES-META.md`.
+Versão 1.1.1 (25/09/2026): banco de dados (Postgres) com sincronização entre aparelhos e migração automática do que estava no celular. Versão 1.1.0: visual Rosé Editorial, menu inferior (Criar, Calendário, Análise, Roteiros, Perfil) e perfis de inspiração. Guia do app da Meta em `docs/INSTRUCOES-META.md`.
 
 ## O que ela faz no app
 
@@ -55,6 +55,7 @@ render.yaml        blueprint do Render
 |---|---|---|
 | `ANTHROPIC_API_KEY` | sim | Claude escreve a análise e o roteiro |
 | `OPENAI_API_KEY` | recomendada | transcrever a fala do vídeo. Sem ela, a análise usa só imagens e legenda |
+| `DATABASE_URL` | recomendada | Postgres do Render (Internal Database URL). Guarda roteiros, perfil e inspirações na nuvem. Sem ela, tudo fica só no aparelho |
 | `APP_SENHA` | sim | senha de entrada (a sessão dura 90 dias no aparelho) |
 | `SECRET_KEY` | sim | assina a sessão (o blueprint gera sozinho) |
 | `CLAUDE_MODELO` | não | padrão `claude-opus-5-5`. `claude-sonnet-5` custa metade |

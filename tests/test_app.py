@@ -1,6 +1,6 @@
 """Testes de regressão do Roteiro Viral. Rodam sem chamar as IAs (respostas simuladas).
 
-Rodar:  pip install -r requirements.txt pytest jsonschema httpx  &&  pytest -q
+Rodar:  pip install -r requirements-dev.txt && pytest -q   (testes do banco: TEST_DATABASE_URL=postgresql://...)
 """
 import copy
 import json
@@ -292,3 +292,87 @@ def test_chamada_desiste_depois_de_2_tentativas(monkeypatch):
     _instalar_cliente(monkeypatch, ["nada", "nada de novo"])
     with pytest.raises(motor.ErroMotor):
         motor._chamar_claude("sistema", [{"type": "text", "text": "x"}], prompts.SCHEMA_COMPLETO)
+
+
+# ------------------------------------------------------------ v1.1.1: banco de dados
+# Rodam só com TEST_DATABASE_URL apontando para um Postgres de teste (as tabelas são limpas).
+from app import db
+
+URL_TESTE = os.getenv("TEST_DATABASE_URL", "")
+precisa_banco = pytest.mark.skipif(not URL_TESTE, reason="sem TEST_DATABASE_URL")
+
+
+@pytest.fixture()
+def banco(monkeypatch):
+    monkeypatch.setattr(config, "DATABASE_URL", URL_TESTE)
+    db.fechar()
+    assert db.iniciar() == "ok"
+    with db._pool.connection() as con:
+        con.execute("TRUNCATE roteiros, preferencias")
+    yield db
+    db.fechar()
+
+
+def test_sem_banco_responde_503(cliente):
+    db.fechar()
+    cliente.post("/api/login", json={"senha": "teste123"})
+    assert cliente.get("/api/roteiros").status_code == 503
+    assert cliente.get("/api/config").json()["banco"] == "desligado"
+
+
+@precisa_banco
+def test_banco_salva_lista_e_respeita_versao_mais_nova(banco):
+    item = {"id": "abc", "criado": 1_000, "atualizado": 2_000, "pedido": {"tema": "rotina"},
+            "meta": {"miniatura": "data:x"}, "resultado": EXEMPLO, "checklist": {}}
+    assert db.salvar_roteiro(item)
+    lista = db.listar_roteiros()
+    assert lista["itens"][0]["titulo"] == EXEMPLO["roteiro"]["titulo"] and lista["itens"][0]["tema"] == "rotina"
+    velho = {**item, "atualizado": 1_500, "pedido": {"tema": "velho"}}
+    assert not db.salvar_roteiro(velho)  # cópia antiga não sobrescreve
+    assert db.obter_roteiro("abc")["pedido"]["tema"] == "rotina"
+    db.apagar_roteiro("abc")
+    assert db.obter_roteiro("abc") is None
+    assert not db.salvar_roteiro({**item, "atualizado": 9_999_999_999_999})  # apagado não volta
+    assert db.listar_roteiros() == {"itens": [], "apagados": ["abc"]}
+
+
+@precisa_banco
+def test_preferencias_vale_a_mais_nova(banco):
+    assert db.salvar_preferencia("inspiracoes", [{"usuario": "a"}], 2_000)
+    assert not db.salvar_preferencia("inspiracoes", [], 1_000)
+    assert db.preferencias()["inspiracoes"]["valor"] == [{"usuario": "a"}]
+    with pytest.raises(ValueError):
+        db.salvar_preferencia("qualquer", 1)
+
+
+@precisa_banco
+def test_api_com_banco_guarda_roteiro_no_servidor(cliente, banco, video_sintetico):
+    cliente.post("/api/login", json={"senha": "teste123"})
+    pedido = {"tema": "rotina da noite", "duracao": "30s"}
+    with open(video_sintetico, "rb") as f:
+        r = cliente.post("/api/gerar", data={"pedido": json.dumps(pedido), "perfil": "{}"},
+                         files={"arquivo": ("t.mp4", f, "video/mp4")})
+    job = _esperar(cliente, r.json()["job_id"])
+    assert job["status"] == "pronto" and job["item_id"]
+    lista = cliente.get("/api/roteiros").json()
+    assert [i["id"] for i in lista["itens"]] == [job["item_id"]]
+    salvo = cliente.get(f"/api/roteiros/{job['item_id']}").json()
+    assert salvo["pedido"]["tema"] == "rotina da noite" and salvo["meta"]["miniatura"].startswith("data:image")
+
+    r2 = cliente.post("/api/ajustar", json={"resultado": job["resultado"], "meta": job["meta"], "pedido": pedido,
+                                            "perfil": {}, "instrucao": "Mais curto", "item_id": job["item_id"]})
+    _esperar(cliente, r2.json()["job_id"])
+    ajustado = cliente.get(f"/api/roteiros/{job['item_id']}").json()
+    assert ajustado["resultado"]["roteiro"]["titulo"] == "Versão ajustada"
+    assert ajustado["anterior"]["roteiro"]["titulo"] == EXEMPLO["roteiro"]["titulo"] and ajustado["ajustes"] == 1
+
+    # o celular manda a versão dele (migração / edição de checklist)
+    ajustado["checklist"] = {"Gancho": True}
+    ajustado["atualizado"] = ajustado["atualizado"] + 10
+    assert cliente.put(f"/api/roteiros/{job['item_id']}", json=ajustado).json()["gravou"] is True
+    assert cliente.put("/api/roteiros/outro", json=ajustado).status_code == 400
+    assert cliente.put("/api/preferencias/perfil", json={"valor": {"jeito_de_falar": "amiga"}, "atualizado": 5}).json()["gravou"]
+    assert cliente.get("/api/preferencias").json()["perfil"]["valor"]["jeito_de_falar"] == "amiga"
+    assert cliente.put("/api/preferencias/senha", json={"valor": 1}).status_code == 400
+    assert cliente.delete(f"/api/roteiros/{job['item_id']}").json()["ok"]
+    assert cliente.get(f"/api/roteiros/{job['item_id']}").status_code == 404
