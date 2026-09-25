@@ -3,54 +3,50 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Roteiro Viral</title>
-  <meta name="description" content="Cole o link de um vídeo viral e receba um roteiro novo, com a sua cara, pronto para gravar.">
-  <meta name="theme-color" content="#F6F1EB" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#1B1715" media="(prefers-color-scheme: dark)">
+  <title>Alynne Studio</title>
+  <meta name="description" content="Seu estúdio de conteúdo. Do que viralizou para o seu próximo vídeo.">
+  <meta name="theme-color" content="#FBF6F4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1A1516" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Roteiro Viral">
+  <meta name="apple-mobile-web-app-title" content="Alynne Studio">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/static/icons/favicon-64.png" type="image/png">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/app.css?v=1.0.1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css?v=1.1.0">
 </head>
 <body>
   <header class="topo" id="topo">
     <button class="marca" data-ir="criar" aria-label="Início">
-      <span class="marca-icone" aria-hidden="true"></span>
-      <span class="marca-nome">Roteiro <em>Viral</em></span>
+      <span class="marca-n">Alynne</span><span class="marca-s">Studio</span>
     </button>
-    <nav class="topo-nav" id="topo-nav">
-      <button class="nav-btn" data-ir="historico">Meus roteiros</button>
-      <button class="nav-btn" data-ir="perfil">Perfil</button>
-    </nav>
+    <button class="avatar" data-ir="perfil" aria-label="Perfil"></button>
   </header>
 
   <main id="app">
     <!-- LOGIN -->
     <section class="view" id="v-login" hidden>
       <div class="login">
-        <span class="marca-icone grande" aria-hidden="true"></span>
-        <h1 class="titulo-display">Roteiro <em>Viral</em></h1>
-        <p class="sub">Do vídeo que viralizou para o seu próximo roteiro.</p>
-        <form id="form-login" class="cartao">
-          <label class="rotulo" for="senha">Senha</label>
-          <input id="senha" type="password" autocomplete="current-password" required>
-          <p class="erro-campo" id="erro-login" hidden></p>
-          <button class="btn primario largo" type="submit">Entrar</button>
-        </form>
+        <div class="login-conteudo">
+          <div class="marca grande"><span class="marca-n">Alynne</span><span class="marca-s">Studio</span></div>
+          <p class="login-frase">Seu estúdio de conteúdo. Do que viralizou para o seu próximo vídeo.</p>
+          <form id="form-login">
+            <label class="sr" for="senha">Senha</label>
+            <input id="senha" type="password" autocomplete="current-password" placeholder="Senha" required>
+            <p class="erro-campo" id="erro-login" hidden></p>
+            <button class="btn claro largo grande" type="submit">Entrar</button>
+          </form>
+        </div>
       </div>
     </section>
 
     <!-- CRIAR -->
     <section class="view" id="v-criar" hidden>
-      <div class="intro">
-        <h1 class="titulo-display">O que viralizou,<br><em>do seu jeito.</em></h1>
-        <p class="sub">A IA assiste o vídeo, entende por que ele prendeu as pessoas e escreve um roteiro novo para você gravar.</p>
+      <div class="hero">
+        <h1>O que viralizou,<br><em>do seu jeito.</em></h1>
       </div>
 
       <form id="form-criar" class="formulario" novalidate>
@@ -61,9 +57,7 @@
             <button type="button" class="btn suave" id="btn-colar">Colar</button>
           </div>
           <div class="envio" id="envio">
-            <label class="envio-btn" for="arquivo">
-              <span>ou envie o vídeo salvo</span>
-            </label>
+            <label class="envio-btn" for="arquivo"><span>ou envie o vídeo salvo</span></label>
             <input id="arquivo" type="file" accept="video/*" hidden>
             <div class="envio-escolhido" id="envio-escolhido" hidden>
               <span id="envio-nome"></span>
@@ -149,7 +143,7 @@
     <section class="view" id="v-processando" hidden>
       <div class="processando">
         <div class="pulso" aria-hidden="true"></div>
-        <h2 class="titulo-display pequeno" id="proc-titulo">Criando seu roteiro</h2>
+        <h2 class="titulo-display" id="proc-titulo">Criando seu roteiro</h2>
         <p class="sub" id="proc-sub">Leva de 1 a 2 minutos. Pode deixar a tela aberta.</p>
         <div class="upload-barra" id="upload-barra" hidden><span id="upload-progresso"></span></div>
         <ol class="etapas" id="etapas"></ol>
@@ -168,17 +162,55 @@
       <div id="resultado"></div>
     </section>
 
-    <!-- HISTÓRICO -->
+    <!-- CALENDÁRIO (chega na v1.2) -->
+    <section class="view" id="v-calendario" hidden>
+      <h1 class="titulo-display">Seu calendário de <em>conteúdo</em></h1>
+      <p class="sub">Você escolhe os vídeos e posts de referência, o período e quantos posts quer por semana. O Studio monta a agenda com dia, horário, formato e ideia, e cada dia já vem com roteiro.</p>
+      <div class="cartao em-breve">
+        <span class="selo">Chega na próxima versão</span>
+        <ul class="lista-simples">
+          <li>De 1 a 5 referências: links, vídeos salvos ou prints de carrossel</li>
+          <li>Semana ou mês, com a frequência que você escolher</li>
+          <li>Reels, carrossel e stories misturados do jeito certo</li>
+          <li>Roteiro completo de cada dia com um toque</li>
+        </ul>
+        <button class="btn primario largo" data-ir="criar">Enquanto isso, criar um roteiro</button>
+      </div>
+    </section>
+
+    <!-- ANÁLISE -->
+    <section class="view" id="v-analise" hidden>
+      <h1 class="titulo-display">Seu perfil, <em>semana a semana</em></h1>
+      <p class="sub">Toda segunda de manhã o Studio vai olhar seus posts, comentários e alcance, comparar com os perfis que te inspiram e te dizer o que repetir e o que testar.</p>
+
+      <section class="bloco">
+        <h2 class="bloco-titulo">Perfis de inspiração</h2>
+        <form id="form-inspiracao" class="linha-input" novalidate>
+          <input id="inspiracao" type="text" inputmode="url" autocomplete="off" placeholder="Cole o link do perfil ou @usuario">
+          <button class="btn primario" type="submit">Adicionar</button>
+        </form>
+        <p class="erro-campo" id="erro-inspiracao" hidden></p>
+        <p class="ajuda">Use o link do perfil (instagram.com/usuario), não de um post. Pode trocar quando quiser.</p>
+        <div id="lista-inspiracoes" class="lista-inspiracoes"></div>
+      </section>
+
+      <div class="cartao em-breve">
+        <span class="selo">Chega na versão 2.0</span>
+        <p class="em-breve-texto">Conexão com o seu Instagram para a análise semanal: o que está trazendo resultado, dúvidas que aparecem nos comentários, o que as suas inspirações fazem que você ainda não faz e 3 ações para a semana.</p>
+      </div>
+    </section>
+
+    <!-- ROTEIROS (HISTÓRICO) -->
     <section class="view" id="v-historico" hidden>
-      <h1 class="titulo-display pequeno">Meus roteiros</h1>
+      <h1 class="titulo-display">Meus <em>roteiros</em></h1>
       <p class="sub">Ficam salvos neste aparelho.</p>
       <div id="lista-historico" class="lista-historico"></div>
     </section>
 
     <!-- PERFIL -->
     <section class="view" id="v-perfil" hidden>
-      <h1 class="titulo-display pequeno">Perfil da Creator</h1>
-      <p class="sub">A IA usa isto em todo roteiro para escrever com a sua voz.</p>
+      <h1 class="titulo-display">Perfil da <em>Creator</em></h1>
+      <p class="sub">O Studio usa isto em todo roteiro para escrever com a sua voz.</p>
       <form id="form-perfil" class="formulario">
         <div class="campo duplo">
           <div>
@@ -220,6 +252,15 @@
     </section>
   </main>
 
+  <!-- MENU -->
+  <nav class="abas" id="abas" aria-label="Menu">
+    <button class="aba" data-ir="criar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg>Criar</button>
+    <button class="aba" data-ir="calendario"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Calendário</button>
+    <button class="aba" data-ir="analise"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M6 15l4-4 3 3 5-6"/><path d="M15 8h3v3"/></svg>Análise</button>
+    <button class="aba" data-ir="historico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a1.5 1.5 0 0 1 1.5 1.5v15l-6.5-3.5L5.5 20V5A1.5 1.5 0 0 1 7 3.5z"/></svg>Roteiros</button>
+    <button class="aba" data-ir="perfil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4.1-5.2 7.5-5.2s6.3 1.6 7.5 5.2"/></svg>Perfil</button>
+  </nav>
+
   <!-- MODO GRAVAR -->
   <div class="gravar" id="gravar" hidden role="dialog" aria-modal="true" aria-label="Modo gravar">
     <div class="gravar-topo">
@@ -239,6 +280,6 @@
 
   <div class="aviso-flutuante" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="/static/app.js?v=1.0.1"></script>
+  <script src="/static/app.js?v=1.1.0"></script>
 </body>
 </html>

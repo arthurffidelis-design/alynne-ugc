@@ -141,7 +141,7 @@ def _esperar(cliente, job_id, limite=60):
 def test_versao_e_config(cliente):
     assert cliente.get("/versao").json()["versao"] == config.VERSAO
     c = cliente.get("/api/config").json()
-    assert c["precisa_senha"] is True and c["autenticado"] is False
+    assert c["precisa_senha"] is True and c["autenticado"] is False and c["app"] == "Alynne Studio"
     assert "lifestyle" in c["perfil_padrao"]["descricao"]
 
 

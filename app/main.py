@@ -1,4 +1,4 @@
-"""Roteiro Viral: app web da Alynne.
+"""Alynne Studio (ex-Roteiro Viral): app web da Alynne.
 
 Cola o link de um vídeo viral (ou envia o arquivo), a IA assiste o vídeo, entende a
 estrutura que fez ele funcionar e entrega um roteiro novo, com a cara dela, pronto para gravar.

@@ -1,4 +1,4 @@
-/* Roteiro Viral: app da Alynne (front-end sem framework) */
+/* Alynne Studio: app da Alynne (front-end sem framework) */
 (() => {
   "use strict";
 
@@ -91,11 +91,13 @@
   }
 
   // ------------------------------------------------------------ navegação
-  const VIEWS = ["login", "criar", "processando", "resultado", "historico", "perfil"];
+  const VIEWS = ["login", "criar", "processando", "resultado", "calendario", "analise", "historico", "perfil"];
+  const ABA_DA_VIEW = { criar: "criar", processando: "criar", resultado: "historico", calendario: "calendario",
+    analise: "analise", historico: "historico", perfil: "perfil" };
   function mostrar(nome) {
     VIEWS.forEach((v) => { $("#v-" + v).hidden = v !== nome; });
-    $("#topo-nav").hidden = nome === "login";
-    $$(".nav-btn").forEach((b) => b.classList.toggle("ativo", b.dataset.ir === nome));
+    document.body.classList.toggle("modo-login", nome === "login");
+    $$(".aba").forEach((b) => b.classList.toggle("ativo", b.dataset.ir === ABA_DA_VIEW[nome]));
     window.scrollTo(0, 0);
   }
   function ir(nome, id) { location.hash = id ? `${nome}/${id}` : nome; }
@@ -111,6 +113,8 @@
     }
     if (nome === "historico") { renderHistorico(); return mostrar("historico"); }
     if (nome === "perfil") { carregarPerfil(); return mostrar("perfil"); }
+    if (nome === "calendario") return mostrar("calendario");
+    if (nome === "analise") { renderInspiracoes(); return mostrar("analise"); }
     if (nome === "processando") {
       if (!estado.processando && !ler("rv_job", null)) return ir("criar");
       return mostrar("processando");
@@ -754,6 +758,75 @@
   $("#btn-sair").addEventListener("click", async () => {
     try { await api("/api/logout", { method: "POST" }); } catch (e) { /* ok */ }
     mostrarLogin();
+  });
+
+  // ------------------------------------------------------------ perfis de inspiração
+  // Salvos neste aparelho por enquanto; na v1.2 passam para o banco do servidor.
+  const MAX_INSPIRACOES = 10;
+  const CAMINHOS_DE_POST = ["p", "reel", "reels", "tv", "stories", "explore", "accounts", "direct", "s"];
+  const inspiracoes = () => ler("rv_inspiracoes", []);
+
+  function extrairUsuario(texto) {
+    const t = String(texto || "").trim();
+    if (!t) return { erro: "Cole o link do perfil ou o @ da pessoa." };
+    const link = extrairLink(t) || (/instagram\.com\//i.test(t) ? "https://" + t.replace(/^\/+/, "") : "");
+    if (link) {
+      if (!/(^|\.)instagram\.com$/i.test((() => { try { return new URL(link).hostname; } catch (e) { return ""; } })())) {
+        return { erro: "Por enquanto a análise funciona com perfis do Instagram." };
+      }
+      const partes = new URL(link).pathname.split("/").filter(Boolean);
+      if (!partes.length) return { erro: "Esse link não tem o nome do perfil." };
+      if (CAMINHOS_DE_POST.includes(partes[0].toLowerCase())) {
+        return { erro: "Esse é o link de um post. Abra o perfil da pessoa e copie o link de lá." };
+      }
+      return validarUsuario(partes[0]);
+    }
+    return validarUsuario(t.replace(/^@/, ""));
+  }
+  function validarUsuario(u) {
+    const usuario = String(u || "").trim().toLowerCase();
+    if (!/^[a-z0-9._]{1,30}$/.test(usuario)) return { erro: "Não reconheci esse perfil. Confira o link ou o @." };
+    return { usuario };
+  }
+
+  function renderInspiracoes() {
+    const lista = inspiracoes();
+    const el = $("#lista-inspiracoes");
+    if (!lista.length) {
+      el.innerHTML = `<p class="ajuda">Nenhum perfil ainda. Adicione de 3 a 5 perfis que você admira e que falam com um público parecido com o seu.</p>`;
+      return;
+    }
+    el.innerHTML = lista.map((i) => `
+      <div class="inspiracao">
+        <span class="mono" aria-hidden="true">${esc(i.usuario.charAt(0).toUpperCase())}</span>
+        <div><a href="https://www.instagram.com/${esc(i.usuario)}/" target="_blank" rel="noopener">@${esc(i.usuario)}</a>
+          <small>adicionado em ${esc(new Date(i.adicionado).toLocaleDateString("pt-BR"))}</small></div>
+        <button class="remover" data-remover-inspiracao="${esc(i.usuario)}" aria-label="Remover @${esc(i.usuario)}">remover</button>
+      </div>`).join("");
+  }
+
+  $("#form-inspiracao").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const erro = $("#erro-inspiracao");
+    erro.hidden = true;
+    const r = extrairUsuario($("#inspiracao").value);
+    const lista = inspiracoes();
+    if (!r.erro && lista.some((i) => i.usuario === r.usuario)) r.erro = `@${r.usuario} já está na sua lista.`;
+    if (!r.erro && lista.length >= MAX_INSPIRACOES) r.erro = `O limite é de ${MAX_INSPIRACOES} perfis. Remova um para adicionar outro.`;
+    if (r.erro) { erro.textContent = r.erro; erro.hidden = false; return; }
+    lista.push({ usuario: r.usuario, adicionado: Date.now() });
+    gravar("rv_inspiracoes", lista);
+    $("#inspiracao").value = "";
+    renderInspiracoes();
+    toast(`@${r.usuario} adicionado`);
+  });
+  $("#lista-inspiracoes").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-remover-inspiracao]");
+    if (!b) return;
+    const usuario = b.dataset.removerInspiracao;
+    if (!confirm(`Remover @${usuario} das inspirações?`)) return;
+    gravar("rv_inspiracoes", inspiracoes().filter((i) => i.usuario !== usuario));
+    renderInspiracoes();
   });
 
   // ------------------------------------------------------------ início

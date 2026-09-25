@@ -1,8 +1,8 @@
-# Roteiro Viral
+# Alynne Studio (ex-Roteiro Viral)
 
 App web da Alynne (@alynnedmoura). Ela cola o link de um vídeo que viralizou (ou envia o arquivo), a IA assiste o vídeo, entende a estrutura que prendeu as pessoas e entrega um roteiro novo, com o tema dela e a voz dela, pronto para ler, gravar e editar.
 
-Versão 1.0.0 (24/09/2026).
+Versão 1.1.0 (25/09/2026): visual Rosé Editorial, menu inferior (Criar, Calendário, Análise, Roteiros, Perfil) e perfis de inspiração. Guia do app da Meta em `docs/INSTRUCOES-META.md`.
 
 ## O que ela faz no app
 

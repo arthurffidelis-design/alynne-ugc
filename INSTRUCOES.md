@@ -1,19 +1,24 @@
-# Atualização Roteiro Viral v1.0.1 (correção do erro 400)
+# Atualização Alynne Studio v1.1.0
 
-**O que corrige:** o Claude recusava o pedido com "compiled grammar is too large". O formato da resposta agora vai descrito no prompt e o app valida o JSON do lado dele, com 1 tentativa automática de correção.
-
-## Arquivos alterados (4)
-
-- app/motor.py
-- app/config.py (versão 1.0.1)
-- app/static/index.html (força o navegador a pegar a versão nova)
-- tests/test_app.py (18 testes passando)
+**O que muda:**
+- Nome e visual **Alynne Studio** (Rosé Editorial), com as fotos dela no login e no topo do início.
+- Ícone novo com monograma.
+- Menu inferior com Criar, Calendário, Análise, Roteiros e Perfil.
+- Aba Análise com o campo de **perfis de inspiração**: ela cola o link do perfil ou o @, e pode adicionar ou remover quando quiser (até 10).
+- Aba Calendário mostra o que chega na v1.2.
 
 ## Como subir pelo GitHub web
 
-1. Abra o repositório `roteiro-viral-alynne` no GitHub.
-2. Clique em **Add file** e depois em **Upload files**.
-3. Arraste as pastas **app** e **tests** deste zip. Elas contêm só os 4 arquivos alterados, e o GitHub mantém os caminhos e substitui os arquivos antigos. Não precisa arrastar este INSTRUCOES.md.
-4. Clique em **Commit changes**.
-5. O Render faz o deploy sozinho (2 a 4 minutos). Abra `/versao` e confira se aparece `"versao": "1.0.1"`.
-6. Gere o roteiro de teste de novo.
+1. No repositório `roteiro-viral-alynne`, clique em **Add file** e depois em **Upload files**.
+2. Arraste as pastas **app**, **tests** e **docs** e o arquivo **README.md** deste zip. O GitHub mantém os caminhos e substitui os arquivos alterados. Não precisa arrastar este INSTRUCOES.md.
+3. Clique em **Commit changes**.
+4. O Render faz o deploy sozinho. Abra `/versao` e confira `"versao": "1.1.0"` e `"app": "Alynne Studio"`.
+5. No celular da Alynne:
+   - Feche e abra o app de novo.
+   - Se o ícone antigo continuar na tela inicial, apague o atalho e adicione de novo. O ícone novo só aparece quando o atalho é recriado.
+
+Observação: o arquivo antigo `app/static/icons/icon.svg` não é mais usado. Pode apagar no GitHub (abrir o arquivo > ⋯ > Delete file) ou deixar lá, porque não atrapalha.
+
+## App da Meta (para a v2.0)
+
+O passo a passo completo está em `docs/INSTRUCOES-META.md`.

@@ -1,12 +1,12 @@
 {
-  "name": "Roteiro Viral",
-  "short_name": "Roteiro",
-  "description": "Do vídeo que viralizou para o seu próximo roteiro.",
+  "name": "Alynne Studio",
+  "short_name": "Alynne Studio",
+  "description": "Seu estúdio de conteúdo. Do que viralizou para o seu próximo vídeo.",
   "start_url": "/#criar",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#F6F1EB",
-  "theme_color": "#F6F1EB",
+  "background_color": "#FBF6F4",
+  "theme_color": "#FBF6F4",
   "lang": "pt-BR",
   "icons": [
     { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
